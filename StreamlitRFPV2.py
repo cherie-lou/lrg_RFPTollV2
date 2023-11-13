@@ -3,6 +3,8 @@ import pandas as pd
 import streamlit as st
 from datetime import datetime
 
+st.markdown("[Download RFP TemplateV2.xlsx](https://logrgadmin.sharepoint.com/teams/engineering/Shared%20Documents/General/Job%20Aids/RFPTool/RFPToolV2.xlsx)", unsafe_allow_html=True)
+
 st.title("RFPToolV2")
 st.header('File Input')
 input_file1 = st.file_uploader("Upload the RFP Excel Template", type=["xls", "xlsx"])
