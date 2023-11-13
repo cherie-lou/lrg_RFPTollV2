@@ -23,7 +23,7 @@ def Filter(df,selected,col_name):
 
 def multiselect_with_select_all(label, options):
     # Create a multiselect widget with "Select All" option
-    selected_options = st.sidebar.multiselect(label, ["Select All"] + options)
+    selected_options = st.sidebar.multiselect(label, ["Select All"] + options,default=["Select All"])
 
     # Check if "Select All" is selected and update the selected_options accordingly
     if "Select All" in selected_options:
@@ -40,10 +40,14 @@ def AwardTable(SelectQueryMetric,time_span):
         temp_df = Filter(temp_df,[3],'RankTotalRate')
     else:
         temp_df = Filter(temp_df,[1],'RankServiceDays')
-    df_award = temp_df.groupby('CarrierCode').agg({"TotalRate":'sum','ServiceDays':'mean'})
+    df_award = temp_df.groupby('CarrierCode').agg({"TotalRate":'sum','ServiceDays':'mean','RfpLoadId':'count','Weight_x':'sum'})
     df_award['Annualized Awarded Revenue']=df_award['TotalRate']*365/time_span
+    df_award['Annualized Awarded #Shipment']=round(df_award['RfpLoadId']*365/time_span,0)
+    df_award['Annualized Awarded Weight']=df_award['Weight_x']*365/time_span
     df_award=df_award.round(2)
     df_award=df_award.reset_index()
+    df_award.columns=df_award.columns.str.replace('RfpLoadId',"#Shipment")
+    df_award.columns=df_award.columns.str.replace('Weight_x',"Weight")
     return df_award
 
 def Bid_price(SelectQueryMetric,time_span):
@@ -81,9 +85,11 @@ def bid_analysis(SelectQueryMetric,merged_df_shipment):
         temp_df = Filter(temp_df,[3],'RankTotalRate')
     else:
         temp_df = Filter(temp_df,[1],'RankServiceDays')
-    selected_column = ['RfpLoadId','OrigCity', 'StateOrig', 'OrigPostal_x', 'OrigCountry','DestCity', 'StateDest', 'DestPostal', 'DestCountry','BaseRateAmount','CarrierCode','Disc', 'Min','TotalRate','Linehaul_history', 'Fuel_history','ServiceDays']
+    selected_column = ['RfpLoadId','OrigCity', 'StateOrig', 'OrigPostal_x', 'OrigCountry','DestCity', 'StateDest', 'DestPostal', 'DestCountry','BaseRateAmount','CarrierCode','Disc', 'Min','IsMin','Fuel','Linehaul','Access_Total','TotalRate','Linehaul_history', 'Fuel_history','ServiceDays']
     result = temp_df[selected_column]
+    result = result.rename(columns={'OrigPostal_x':'OrigPostal','BaseRateAmount':'Czar','Access_Total':'Accessorials'})
     return result
+
 
 def convert_df(df):
    return df.to_csv(index=False).encode('utf-8')
@@ -200,7 +206,7 @@ if input_file1 is not None and input_file2 is not None:
     
     df_overview.reset_index(inplace=True)
     
-    df_overview['Total'] = df_overview.iloc[:, 1:5].sum(axis=1)
+    df_overview=pd.merge(df_overview,df_carrier[['CarrierCode','IsIncumbent']],on = 'CarrierCode')
     df_overview.rename(columns={'CarrierCode': 'CarrierCode', '1.0_x': 'Lowest Cost', 2.0: '2nd Lowest Cost', 3.0: '3rd Lowest Cost', '1.0_y': 'Fastest Transit','Total':'Total'}, inplace=True)
     
     #Annualization Table
@@ -212,8 +218,8 @@ if input_file1 is not None and input_file2 is not None:
     third_lowest_cost = merged_df_shipment[merged_df_shipment['RankTotalRate']==3]
     fastest_transit = merged_df_shipment[merged_df_shipment['RankServiceDays']==1]
 
-    p_lowest_cost = round((lowest_cost['IsIncumbent'].sum()/len(lowest_cost)),2)*100
-    p_sec_lowest_cost = round((sec_lowest_cost['IsIncumbent'].sum()/len(sec_lowest_cost)),2)*100
+    p_lowest_cost = round((lowest_cost['IsIncumbent'].sum()/len(lowest_cost)),2)
+    p_sec_lowest_cost = round((sec_lowest_cost['IsIncumbent'].sum()/len(sec_lowest_cost)),2)
     p_third_lowest_cost = round((third_lowest_cost['IsIncumbent'].sum()/len(third_lowest_cost)),2)*100
     p_fastest_transit = round((fastest_transit['IsIncumbent'].sum()/len(fastest_transit)),2)*100
 
