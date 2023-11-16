@@ -136,6 +136,9 @@ def accessorial_summary(SelectQueryMetric):
             result[average_column] = result[accessorial] / result[cnt_column]
     result = result[sorted(result.columns)]
     result = pd.merge(hist_acc, result, left_index=True, right_index=True, suffixes=('_historical', ''))
+    sum_columns = result.filter(like='_sum', axis=1)
+    result['Solution_sum']=sum_columns.sum(axis=1)
+    result['Accessorial Saving%']=round((result['Historical Total Accessorial']-result['Solution_sum'])*100/result['Historical Total Accessorial'],2)
     return result
 
 def accessorial_summary_bylane(SelectQueryMetric):
