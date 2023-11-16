@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 from datetime import datetime
+import io
 
 st.markdown("[Download RFP TemplateV2.xlsx](https://logrgadmin.sharepoint.com/teams/engineering/Shared%20Documents/General/Job%20Aids/RFPTool/RFPToolV2.xlsx)", unsafe_allow_html=True)
 st.markdown("[Download EIA Diesel Price Template.xlsx](https://logrgadmin.sharepoint.com/teams/engineering/Shared%20Documents/General/Job%20Aids/RFPTool/EIA-diesel-US-Price.xlsx)", unsafe_allow_html=True)
@@ -45,14 +46,17 @@ def AwardTable(SelectQueryMetric,time_span):
     else:
         temp_df = Filter(temp_df,[1],'RankServiceDays')
     df_award = temp_df.groupby('CarrierCode').agg({"TotalRate":'sum','ServiceDays':'mean','RfpLoadId':'count','Weight_x':'sum'})
-    df_award['Annualized Awarded Revenue']=df_award['TotalRate']*365/time_span
+    df_award['Annualized Awarded Revenue($)']=df_award['TotalRate']*365/time_span
     df_award['Annualized Awarded #Shipment']=round(df_award['RfpLoadId']*365/time_span,0)
-    df_award['Annualized Awarded Weight']=df_award['Weight_x']*365/time_span
+    df_award['Annualized Awarded Weight(lbs)']=df_award['Weight_x']*365/time_span
     df_award=df_award.round(2)
     df_award=df_award.reset_index()
     df_award.columns=df_award.columns.str.replace('RfpLoadId',"#Shipment")
-    df_award.columns=df_award.columns.str.replace('Weight_x',"Weight")
+    df_award.columns=df_award.columns.str.replace('Weight_x',"Weight(lbs)")
+    df_award.columns=df_award.columns.str.replace('TotalRate',"Total Awarded Revenue($)")
+    df_award.columns=df_award.columns.str.replace('ServiceDay',"Average Service Day")
     return df_award
+
 
 def Bid_price(SelectQueryMetric,time_span):
     Historic_Total = df_loads['Total Charge_history'].sum().round(2)
@@ -79,7 +83,7 @@ def Bid_price(SelectQueryMetric,time_span):
     Total_table=Total_table[1:]
     return Total_table
 
-def bid_analysis(SelectQueryMetric,merged_df_shipment):
+def bid_analysis(SelectQueryMetric):
     temp_df = merged_df_shipment
     if SelectQueryMetric == "Lowest Cost":
         temp_df = Filter(temp_df,[1],'RankTotalRate')
@@ -89,14 +93,66 @@ def bid_analysis(SelectQueryMetric,merged_df_shipment):
         temp_df = Filter(temp_df,[3],'RankTotalRate')
     else:
         temp_df = Filter(temp_df,[1],'RankServiceDays')
-    selected_column = ['RfpLoadId','OrigCity', 'StateOrig', 'OrigPostal_x', 'OrigCountry','DestCity', 'StateDest', 'DestPostal', 'DestCountry','BaseRateAmount','CarrierCode','Disc', 'Min','IsMin','Fuel','Linehaul','Access_Total','TotalRate','Linehaul_history', 'Fuel_history','ServiceDays']
+    selected_column = ['RfpLoadId','OrigCity', 'StateOrig', 'OrigPostal_x', 'OrigCountry','DestCity', 'StateDest', 'DestPostal', 'DestCountry','BaseRateAmount','CarrierCode','Disc', 'Min','Fuel','Linehaul','Access_Total','TotalRate','Linehaul_history', 'Fuel_history','ServiceDays',]
     result = temp_df[selected_column]
+    result = result.merge(new_acc, on = ['RfpLoadId','CarrierCode'])
     result = result.rename(columns={'OrigPostal_x':'OrigPostal','BaseRateAmount':'Czar','Access_Total':'Accessorials'})
     return result
 
 
-def convert_df(df):
+def convert_df_T(df):
+   return df.to_csv(index=True).encode('utf-8')
+
+def convert_df_F(df):
    return df.to_csv(index=False).encode('utf-8')
+
+def accessorial_summary(SelectQueryMetric):
+    temp_df = merged_df_shipment
+    if SelectQueryMetric == "Lowest Cost":
+        temp_df = Filter(temp_df,[1],'RankTotalRate')
+    elif SelectQueryMetric == "2nd Lowest Cost":
+        temp_df = Filter(temp_df,[2],'RankTotalRate')
+    elif SelectQueryMetric == "3rd Lowest Cost":
+        temp_df = Filter(temp_df,[3],'RankTotalRate')
+    else:
+        temp_df = Filter(temp_df,[1],'RankServiceDays')
+    pivot_acc_sum = pd.pivot_table(temp_df, values=AccessorialCode_y, index='CarrierCode', aggfunc={acc: 'sum' for acc in AccessorialCode_y}, fill_value=0)
+    pivot_acc_sum=pd.DataFrame(pivot_acc_sum).T
+    pivot_acc_sum=pivot_acc_sum.rename(index=lambda x:x.replace('_y',''))
+    pivot_acc_cnt = pd.pivot_table(temp_df, values=AccessorialCode_y, index='CarrierCode', aggfunc={acc: lambda x: (x != 0).sum() for acc in AccessorialCode_y}, fill_value=0)
+    pivot_acc_cnt=pd.DataFrame(pivot_acc_cnt).T
+    pivot_acc_cnt=pivot_acc_cnt.rename(index=lambda x:x.replace('_y',''))
+    hist_acc = pd.DataFrame({
+        'Historical Total Accessorial': temp_df[AccessorialCode_x].sum(),
+        'Historical Accessorial Count': (temp_df[AccessorialCode_x]).count()
+    })
+    hist_acc = hist_acc.rename(index=lambda x:x.replace('_x',''))
+    result = pd.merge(pivot_acc_cnt, pivot_acc_sum, left_index=True, right_index=True, suffixes=('_cnt', '_sum'))
+    
+    for accessorial in result.columns:
+        if accessorial.endswith('_sum'):
+            cnt_column = accessorial.replace('_sum', '_cnt')
+            average_column = accessorial.replace('_sum', '_avg')
+            result[average_column] = result[accessorial] / result[cnt_column]
+    result = result[sorted(result.columns)]
+    result = pd.merge(hist_acc, result, left_index=True, right_index=True, suffixes=('_historical', ''))
+    return result
+
+def accessorial_summary_bylane(SelectQueryMetric):
+    temp_df = merged_df_shipment
+    if SelectQueryMetric == "Lowest Cost":
+        temp_df = Filter(temp_df,[1],'RankTotalRate')
+    elif SelectQueryMetric == "2nd Lowest Cost":
+        temp_df = Filter(temp_df,[2],'RankTotalRate')
+    elif SelectQueryMetric == "3rd Lowest Cost":
+        temp_df = Filter(temp_df,[3],'RankTotalRate')
+    else:
+        temp_df = Filter(temp_df,[1],'RankServiceDays')
+    temp_df['lane']=temp_df['StateOrig']+'-'+temp_df['StateDest']
+    result = temp_df.groupby('lane')[AccessorialCode_y].agg(['sum',lambda x: (x != 0).sum()])
+    result = result.rename(columns={'<lambda_0>': 'count'})
+
+    return result
 
 if input_file1 is not None and input_file2 is not None:
     df_loads = pd.read_excel(input_file1 ,sheet_name='RFP-Loads')
@@ -114,7 +170,7 @@ if input_file1 is not None and input_file2 is not None:
     diesel_tier = list(df_fuel['USDieselValueMax'])
 
     carrier_list = list(df_carrier['CarrierCode'])
-
+    
     #selection bar layout
 
     #incumbent Filter
@@ -139,6 +195,11 @@ if input_file1 is not None and input_file2 is not None:
     DestList = unique(df_loads["StateDest"])
     selected_dest = multiselect_with_select_all("Select Destination(s)",DestList)
     df_loads = Filter(df_loads,selected_dest,'StateDest')
+
+    #Location Selection Filter
+    location_list = list(df_loads['Location'])
+    selected_loc = multiselect_with_select_all("Select Location(s)",location_list)
+    df_loads = Filter(df_loads,selected_loc,'Location')
 
     #Query Metric Selection Filter
     QueryMetricList = ["Lowest Cost","2nd Lowest Cost","3rd Lowest Cost","Fastest Transit"]
@@ -199,7 +260,14 @@ if input_file1 is not None and input_file2 is not None:
     selected_col = ['RfpLoadId','Linehaul','Fuel','Access_Total','CarrierCode','Disc','Min','IsMin','TotalRate','ServiceDays','RankTotalRate','RankLinehaul','RankServiceDays']
     df = merged_df_shipment[selected_col]
 
-    
+    AccessorialCode_y =[ 'CSD_y', 'HAZMAT_y',
+       'INSDD_y', 'INSDP_y', 'LFGP_y', 'LFGD_y', 'LAP_y', 'LAD_y', 'NFY_y',
+       'RESP_y', 'RESD_y', 'TRDSHW_y', 'APPT_y', 'EXL6-8_y', 'EXL8-10_y',
+       'EXL10-12_y', 'EXL12-16_y', 'EXL16-20_y', 'EXL20-28_y', 'EXL>28_y']
+    AccessorialCode_x = ['CSD_x', 'HAZMAT_x', 'INSDD_x', 'INSDP_x',
+        'LFGP_x', 'LFGD_x', 'LAP_x', 'LAD_x', 'NFY_x', 'RESP_x', 'RESD_x',
+        'TRDSHW_x', 'APPT_x', 'EXL6-8_x', 'EXL8-10_x', 'EXL10-12_x',
+        'EXL12-16_x', 'EXL16-20_x', 'EXL20-28_x', 'EXL>28_x']
 
     df_overview = merged_df_shipment.groupby("CarrierCode")['RankTotalRate'].value_counts().unstack(fill_value=0)
     df_fastest = merged_df_shipment.groupby("CarrierCode")['RankServiceDays'].value_counts().unstack(fill_value=0)
@@ -224,8 +292,8 @@ if input_file1 is not None and input_file2 is not None:
 
     p_lowest_cost = round((lowest_cost['IsIncumbent'].sum()/len(lowest_cost)),2)
     p_sec_lowest_cost = round((sec_lowest_cost['IsIncumbent'].sum()/len(sec_lowest_cost)),2)
-    p_third_lowest_cost = round((third_lowest_cost['IsIncumbent'].sum()/len(third_lowest_cost)),2)*100
-    p_fastest_transit = round((fastest_transit['IsIncumbent'].sum()/len(fastest_transit)),2)*100
+    p_third_lowest_cost = round((third_lowest_cost['IsIncumbent'].sum()/len(third_lowest_cost)),2)
+    p_fastest_transit = round((fastest_transit['IsIncumbent'].sum()/len(fastest_transit)),2)
 
     Incumb_data = {'Group': ['Lowest Cost', '2nd Lowest Cost','3rd Lowest Cost', 'Fastest Transit'],
                     'Percentage of Incumbency': [p_lowest_cost,p_sec_lowest_cost, p_third_lowest_cost, p_fastest_transit]}
@@ -236,15 +304,29 @@ if input_file1 is not None and input_file2 is not None:
 
     df_award = AwardTable(SelectQueryMetric,time_span)
     df_total = Bid_price(SelectQueryMetric,time_span)
+    df_acc_tbl = accessorial_summary(SelectQueryMetric)
+    df_acc_lane = accessorial_summary_bylane(SelectQueryMetric)
 
     #download 
-    csv=convert_df(bid_analysis(SelectQueryMetric,merged_df_shipment))
+    csv=convert_df_F(bid_analysis(SelectQueryMetric))
     st.sidebar.download_button(
         label="Download bid analysis",
         data=csv,
         file_name='bid analysis.csv',
         mime='text/csv',
     )
+
+    #download acc summary
+    output_acc = io.BytesIO()
+    with pd.ExcelWriter(output_acc, engine='xlsxwriter') as writer:
+        df_acc_tbl.to_excel(writer, sheet_name='Accessorial Summary Table',index = True)
+        df_acc_lane.to_excel(writer, sheet_name='Accessorial Summary By Lane', index=True)
+
+    # Prepare the Excel file for download
+    excel_data_acc = output_acc.getvalue()
+
+    # Offer the download of the Excel file
+    st.sidebar.download_button(label="Download accessorial summary", data=excel_data_acc, file_name="Accessorial Summary.xlsx", key='download')
 
     # colt1,colt2 = st.columns(2)
     # with colt1:
