@@ -151,7 +151,10 @@ def accessorial_summary_bylane(SelectQueryMetric):
     temp_df['lane']=temp_df['StateOrig']+'-'+temp_df['StateDest']
     result = temp_df.groupby('lane')[AccessorialCode_y].agg(['sum',lambda x: (x != 0).sum()])
     result = result.rename(columns={'<lambda_0>': 'count'})
+    result.columns = ['_'.join(map(str, col)).replace('_y', '') for col in result.columns]
 
+    # Replace '_y' in the index
+    result.index = [index.replace('_y', '') for index in result.index]
     return result
 
 if input_file1 is not None and input_file2 is not None:
