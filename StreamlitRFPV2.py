@@ -574,6 +574,31 @@ def accessorial_summary_bylane(SelectQueryMetric):
 
     return result
 
+st.header('RfpLoad Query Generator')
+
+__SERVER__="lrgdb01.database.windows.net"
+__DATABASE__="Lrg"
+__DRIVER__="{ODBC Driver 17 for SQL Server}"
+__USER__="srvcacct@logrg.com"
+__PASS__="R3d$st0ne!"
+#connection_string="DRIVER="+__DRIVER__+';SERVER='+__SERVER__+';PORT=1443;DATABASE='+__DATABASE__+';AUTHENTICATION=ActiveDirectoryInteractive'
+connection_string="DRIVER="+__DRIVER__+';SERVER='+__SERVER__+';PORT=1443;DATABASE='+__DATABASE__+';AUTHENTICATION=ActiveDirectoryPassword'+';Encrypt=yes'+';UID='+__USER__+';PWD='+__PASS__
+connection = pyodbc.connect(connection_string)
+
+start_date = st.date_input('Start Date', value=None)
+end_date = st.date_input('End Date', value=None)
+OrganizationName = st.text_input('Organization Name',value = "")
+
+query1 = main_query('2023-05-01','2023-06-01',OrganizationName)
+df_main_query = pd.read_sql(query1, connection)
+
+query2 = other_query('2023-05-01','2023-06-01',OrganizationName)
+df_other_query = pd.read_sql(query2,connection)
+
+
+st.download_button(label="Download RFP Template", data=create_excel_file(df_main_query,df_other_query), file_name="RFP_Template.xlsx", key='download')
+
+
 st.header('File Input')
 input_file1 = st.file_uploader("Upload the RFP Excel Template", type=["xls", "xlsx"])
 input_file2 = st.file_uploader("Upload the EIA Diesel Price Sheet ", type=["xls", "xlsx"])
