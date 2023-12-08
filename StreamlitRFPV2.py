@@ -429,6 +429,44 @@ group by LoadId
  """
     return query
 
+def create_excel_file(query_data,other_data):
+    sheet_RFP_Loads = pd.DataFrame(query_data)
+    sheet_Other_Accessorials = pd.DataFrame(other_data)
+    df_RfpCarrier = {'RfpCarrierId':[], 'CarrierCode':[], 'Carrier Name':[],'IsIncumbent':[],'BaseRateId':[],'DiscMinTableId':[],'ServiceRateId':[],'FuelTableId':[],'AccessorialTableId':[]} 
+    sheet_RfpCarrier = pd.DataFrame(df_RfpCarrier)
+    df_AccessirialDataBase = {'AccessorialTableId':[],'AccessorialCode':[],'Min':[],'Max':[],'Cwt':[]} 
+    sheet_AccessirialDataBase = pd.DataFrame(df_AccessirialDataBase)
+    df_RfpServiceRates = {'ServiceRateId':[],'ServiceRateName':[],'ContractId':[],'ContractStatus':[],'TPNumber':[]} 
+    sheet_RfpServiceRates = pd.DataFrame(df_RfpServiceRates)
+    df_RfPBaseRates = {'BaseRateId':[],'BaseRateName':[],'ContractId':[],'ContractStatus':[],'TPNumber':[]} 
+    sheet_RfPBaseRates = pd.DataFrame(df_RfPBaseRates)
+    df_RfpFuelTable = {'FuelTableId':[],'FuelTableName':[]} 
+    sheet_RfpFuelTable = pd.DataFrame(df_RfpFuelTable)
+    df_FuelTables = {'FuelTableValueId':[],'FuelTableId':[],'USDieselValueMin':[],'USDieselValueMax':[],'FuelSurcharge%':[]} 
+    sheet_FuelTables = pd.DataFrame(df_FuelTables)
+    df_BaseRate = {'RfpLoadId':[],'BaseRateId':[],'BaseRateAmount':[]} 
+    sheet_BaseRate = pd.DataFrame(df_BaseRate)
+    df_DiscountMinDatabase = {'Carrier':[],'StateOrig':[],'OrigPostal':[],'StateDest':[],'DestPost':[],'Disc':[],'Min':[]} 
+    sheet_DiscountMinDatabase = pd.DataFrame(df_DiscountMinDatabase)
+    df_RfpServiceTable = {'RfpServiceId':[],'RfpLoadId':[],'ServiceRateId':[],'ServiceDays':[]} 
+    sheet_RfpServiceTable = pd.DataFrame(df_RfpServiceTable)
+    output_template = io.BytesIO()
+    with pd.ExcelWriter(output_template, engine='xlsxwriter') as writer:
+        sheet_RFP_Loads.to_excel(writer, sheet_name='RFP_Loads', index=False)
+        sheet_Other_Accessorials.to_excel(writer, sheet_name='Other_Accessorials', index=False)
+        sheet_RfpCarrier.to_excel(writer, sheet_name='RfpCarrier', index=False)
+        sheet_AccessirialDataBase.to_excel(writer, sheet_name='AccessirialDataBase', index=False)
+        sheet_RfpServiceRates.to_excel(writer, sheet_name='RfpServiceRates', index=False)
+        sheet_RfPBaseRates.to_excel(writer, sheet_name='RfPBaseRates', index=False)
+        sheet_RfpFuelTable.to_excel(writer, sheet_name='RfpFuelTable', index=False)
+        sheet_FuelTables.to_excel(writer, sheet_name='FuelTables', index=False)
+        sheet_BaseRate.to_excel(writer, sheet_name='BaseRate', index=False)
+        sheet_DiscountMinDatabase.to_excel(writer, sheet_name='DiscountMinDatabase', index=False)
+        sheet_RfpServiceTable.to_excel(writer, sheet_name='RfpServiceTable', index=False)
+    
+    excel_data_template = output_template.getvalue()
+    return excel_data_template
+
 def unique(list1):
     ans = pd.Series(list1).drop_duplicates().to_list()
     return ans
@@ -577,12 +615,11 @@ def accessorial_summary_bylane(SelectQueryMetric):
 
 st.header('RfpLoad Query Generator')
 
-__SERVER__="lrgdb01.database.windows.net"
-__DATABASE__="Lrg"
-__DRIVER__="{ODBC Driver 17 for SQL Server}"
-__USER__="srvcacct@logrg.com"
-__PASS__="R3d$st0ne!"
-#connection_string="DRIVER="+__DRIVER__+';SERVER='+__SERVER__+';PORT=1443;DATABASE='+__DATABASE__+';AUTHENTICATION=ActiveDirectoryInteractive'
+__SERVER__=st.secrets["SERVER"]
+__DATABASE__=st.secrets["DATABASE"]
+__DRIVER__=st.secrets["DRIVER"]
+__USER__=st.secrets["USER"]
+__PASS__=st.secrets["PASS"]
 connection_string="DRIVER="+__DRIVER__+';SERVER='+__SERVER__+';PORT=1443;DATABASE='+__DATABASE__+';AUTHENTICATION=ActiveDirectoryPassword'+';Encrypt=yes'+';UID='+__USER__+';PWD='+__PASS__
 connection = pyodbc.connect(connection_string)
 
