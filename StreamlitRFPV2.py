@@ -615,49 +615,26 @@ def accessorial_summary_bylane(SelectQueryMetric):
 
 st.header('RfpLoad Query Generator')
 
-# __SERVER__=st.secrets["SERVER"]
-# __DATABASE__=st.secrets["DATABASE"]
-# __DRIVER__=st.secrets["DRIVER"]
-# __USER__=st.secrets["USER"]
-# __PASS__=st.secrets["PASS"]
-# connection_string="DRIVER="+__DRIVER__+';SERVER='+__SERVER__+';PORT=1443;DATABASE='+__DATABASE__+';AUTHENTICATION=ActiveDirectoryPassword'+';Encrypt=yes'+';UID='+__USER__+';PWD='+__PASS__
-# connection = pyodbc.connect(connection_string)
-
-# @st.cache_resource
-# def init_connection():
-#     return pyodbc.connect(
-#         "DRIVER={ODBC Driver 17 for SQL Server};SERVER="
-#         + st.secrets["SERVER"]
-#         + ";DATABASE="
-#         + st.secrets["DATABASE"]
-#         + ";UID="
-#         + st.secrets["USER"]
-#         + ";PWD="
-#         + st.secrets["PASS"]
-#     )
-
-# conn = init_connection()
-
-# # Perform query.
-# # Uses st.cache_data to only rerun when the query changes or after 10 min.
-# # @st.cache_data(ttl=600)
-# def run_query(query):
-#     with conn.cursor() as cur:
-#         cur.execute(query)
-#         return cur.fetchall()
-
+__SERVER__=st.secrets['SERVER']
+__DATABASE__=st.secrets['DATABASE']
+__DRIVER__=st.secrets['DRIVER']
+__USER__=st.secrets['USER']
+__PASS__=st.secrets['PASS']
+#connection_string="DRIVER="+__DRIVER__+';SERVER='+__SERVER__+';PORT=1443;DATABASE='+__DATABASE__+';AUTHENTICATION=ActiveDirectoryInteractive'
+connection_string="DRIVER="+__DRIVER__+';SERVER='+__SERVER__+';PORT=1443;DATABASE='+__DATABASE__+';AUTHENTICATION=ActiveDirectoryPassword'+';Encrypt=yes'+';UID='+__USER__+';PWD='+__PASS__
+connection = pyodbc.connect(connection_string)
 
 start_date = st.date_input('Start Date', value=None)
 end_date = st.date_input('End Date', value=None)
 OrganizationName = st.text_input('Organization Name',value = "")
 
 query1 = main_query('2023-05-01','2023-06-01',OrganizationName)
-# df_main_query = pd.read_sql(query1, connection)
-df_main_query = run_query(query1)
+df_main_query = pd.read_sql(query1, connection)
+
 
 query2 = other_query('2023-05-01','2023-06-01',OrganizationName)
-# df_other_query = pd.read_sql(query2,connection)
-df_other_query = run_query(query2)
+df_other_query = pd.read_sql(query2,connection)
+
 
 
 st.download_button(label="Download RFP Template", data=create_excel_file(df_main_query,df_other_query), file_name="RFP_Template.xlsx", key='download')
