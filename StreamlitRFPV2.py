@@ -6,7 +6,7 @@ import io
 import pyodbc
 
 st.markdown("[Download EIA Diesel Price Template.xlsx](https://logrgadmin.sharepoint.com/teams/engineering/Shared%20Documents/General/Job%20Aids/RFPTool/EIA-diesel-US-Price.xlsx)", unsafe_allow_html=True)
-
+st.markdown("[Download RFP TemplateV2.xlsx](https://logrgadmin.sharepoint.com/teams/engineering/Shared%20Documents/General/Job%20Aids/RFPTool/RFPToolV2.xlsx)", unsafe_allow_html=True)
 
 st.title("RFPToolV2")
 
