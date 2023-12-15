@@ -333,6 +333,7 @@ if input_file1 is not None and input_file2 is not None:
 
     # Offer the download of the Excel file
     st.sidebar.download_button(label="Download accessorial summary", data=excel_data_acc, file_name="Accessorial Summary.xlsx", key='download')
+    st.sidebar.download_button(label="Download All Combination Table", data=df, file_name="All Combination Table.xlsx", key='download')
 
     # colt1,colt2 = st.columns(2)
     # with colt1:
