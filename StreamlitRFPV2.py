@@ -203,7 +203,7 @@ if input_file1 is not None and input_file2 is not None:
     df_loads = Filter(df_loads,selected_dest,'StateDest')
 
     #Location Selection Filter
-    location_list = list(df_loads['Location'])
+    location_list = unique(list(df_loads['Location']))
     selected_loc = multiselect_with_select_all("Select Location(s)",location_list)
     df_loads = Filter(df_loads,selected_loc,'Location')
 
