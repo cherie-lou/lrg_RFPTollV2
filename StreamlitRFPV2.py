@@ -324,7 +324,7 @@ if input_file1 is not None and input_file2 is not None:
 
     st.sidebar.download_button(
         label="Download All Combination Table",
-        data=df,
+        data=convert_df_F(df),
         file_name='All Combination Table.csv',
         mime='text/csv',
     )
